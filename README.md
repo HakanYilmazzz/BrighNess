@@ -21,8 +21,9 @@ Windows işletim sistemleri için geliştirilmiş; çoklu monitör desteğine sa
 - ⚡ **Asenkron Donanım Thread'i (`QThread`)**: Tüm DDC/CI monitör yazma işlemleri arka planda çalışır. Arayüz yavaş monitörlerde bile 0ms gecikmeyle 60 FPS akıcı kalır.
 - 🔒 **Tekil Çalışma Kilidi (`QLocalServer`)**: Uygulama açıkken tekrar çift tıklandığında ikinci bir süreç açılmaz, mevcut pencere öne getirilir.
 - 🌍 **Çevrimdışı Güneş Modu**: Dış API veya internet gerektirmeden, astronomik Güneş Yüksekliği (α) formülü ile gün boyunca parlaklığı yumuşak sinüs eğrisi üzerinden otomatik ayarlar.
-- 🖥️ **Çoklu Monitör Desteği**: Sistemdeki tüm bağlı ekranları otomatik algılar ve eşzamanlı kontrol sağlar.
-- 🌙 **Hazır Profil Butonları**: Güneş Modu, Gece Modu (%0) ve Gündüz Modu (%100) arasında tek tıkla geçiş. Aktif mod mavi vurgu ile belirtilir.
+- 🖥️ **Çoklu Monitör & Hot-Plug Desteği**: Sistemdeki tüm bağlı ekranları otomatik algılar. Monitör takıp çıkarıldığında anında arayüzü günceller ve eşzamanlı kontrol sağlar. Monitör ismi okunamayan ekranlar için akıllı isim düşüşü (fallback) uygular.
+- 🌙 **Gece Işığı (Night Light) Filtresi**: Windows API'lerine dokunmadan saf PyQt5 (`Qt.WindowTransparentForInput`) üzerinden ekranlara tıklama geçiren, göz yormayan, yoğunluğu ayarlanabilir turuncu şeffaf bir katman çizer. Diğer modlarla (özellikle Gece Modu) senkronize otomatik devreye girer.
+- 🎨 **Hazır Profil Butonları**: Güneş Modu, Gece Modu (%0) ve Gündüz Modu (%100) arasında tek tıkla geçiş. Aktif mod mavi vurgu ile belirtilir.
 - 📌 **Dinamik Tepsi Tooltip**: Fare simge üzerindeyken anlık aktif modu ve tüm monitörlerin % parlaklıklarını canlı gösterir.
 - 🔄 **Windows Başlangıç Kaydı**: Sistem başlangıcına ekleme/çıkarma opsiyonu (Windows Registry `HKCU` entegrasyonu).
 

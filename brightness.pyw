@@ -7,10 +7,10 @@ import queue
 from datetime import datetime
 import screen_brightness_control as sbc
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
-                             QSlider, QLabel, QPushButton, QSystemTrayIcon, QMenu, QAction)
+                             QSlider, QLabel, QPushButton, QSystemTrayIcon, QMenu, QAction, QFrame)
 from PyQt5.QtCore import Qt, QTimer, QThread
 from PyQt5.QtNetwork import QLocalServer, QLocalSocket
-from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QCursor
+from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QCursor, QPaintEvent
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -54,6 +54,31 @@ def get_offline_solar_brightness(lat=39.6484, lon=27.8826, tz_offset=3):
     return max(0, min(100, brightness))
 
 
+class NightLightOverlay(QWidget):
+    def __init__(self, screen):
+        super().__init__()
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool | Qt.WindowTransparentForInput)
+        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WA_ShowWithoutActivating, True)
+        
+        self._opacity = 0.15
+        self.setGeometry(screen.geometry())
+        
+    def show_overlay(self):
+        self.show()
+        
+    def hide_overlay(self):
+        self.hide()
+        
+    def set_opacity(self, value_0_to_100):
+        self._opacity = max(0.0, min(0.25, value_0_to_100 / 400.0))
+        self.update()
+        
+    def paintEvent(self, event: QPaintEvent):
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor(255, 140, 0, int(self._opacity * 255)))
+
+
 class HardwareWorker(QThread):
     def __init__(self):
         super().__init__()
@@ -67,21 +92,20 @@ class HardwareWorker(QThread):
         while self.running:
             try:
                 task = self.task_queue.get(timeout=0.2)
-                if task:
-                    monitor, value = task
-                    latest_tasks = {monitor: value}
-                    while not self.task_queue.empty():
-                        try:
-                            m, v = self.task_queue.get_nowait()
-                            latest_tasks[m] = v
-                        except queue.Empty:
-                            break
+                monitor, value = task
+                latest_tasks = {monitor: value}
+                while not self.task_queue.empty():
+                    try:
+                        m, v = self.task_queue.get_nowait()
+                        latest_tasks[m] = v
+                    except queue.Empty:
+                        break
 
-                    for m, v in latest_tasks.items():
-                        try:
-                            sbc.set_brightness(v, display=m)
-                        except Exception as e:
-                            logging.warning(f"'{m}' donanım parlaklık ayarı başarısız: {e}")
+                for m, v in latest_tasks.items():
+                    try:
+                        sbc.set_brightness(v, display=m)
+                    except Exception as e:
+                        logging.warning(f"'{m}' donanım parlaklık ayarı başarısız: {e}")
             except queue.Empty:
                 continue
 
@@ -93,10 +117,12 @@ class HardwareWorker(QThread):
 class BrightnessWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint)
-        self.setFixedSize(340, 260)
+        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint | Qt.WindowStaysOnTopHint)
+        self.setFixedSize(340, 310)
         
         self.tray_icon = None
+        self.night_light_overlays = []
+        self.night_light_enabled = False
         
         self.hardware_worker = HardwareWorker()
         self.hardware_worker.start()
@@ -108,17 +134,34 @@ class BrightnessWindow(QWidget):
                 border-radius: 10px;
                 font-family: 'Segoe UI', sans-serif;
             }
+            QFrame#MonitorCard {
+                background-color: #2a2a2a;
+                border-radius: 8px;
+                padding: 10px;
+            }
+            QFrame#MonitorCard QLabel {
+                background-color: transparent;
+            }
+            QFrame#MonitorCard QSlider {
+                background-color: transparent;
+            }
             QSlider::groove:horizontal {
                 border-radius: 4px;
                 height: 8px;
                 background: #3a3a3a;
             }
+            QSlider::sub-page:horizontal {
+                background: #0078D7;
+                border-radius: 4px;
+                height: 8px;
+            }
             QSlider::handle:horizontal {
                 background: #0078D7;
-                width: 16px;
-                height: 16px;
-                margin: -4px 0;
-                border-radius: 8px;
+                width: 18px;
+                height: 18px;
+                margin: -5px 0;
+                border-radius: 9px;
+                border: 2px solid #0078D7;
             }
             QSlider::handle:horizontal:hover {
                 background: #1e90ff;
@@ -128,7 +171,7 @@ class BrightnessWindow(QWidget):
             }
             QPushButton {
                 background-color: #333333;
-                border-radius: 6px;
+                border-radius: 8px;
                 padding: 6px 10px;
                 font-weight: 500;
                 font-size: 12px;
@@ -141,10 +184,11 @@ class BrightnessWindow(QWidget):
 
         self.monitor_controls = []
         self.current_mode = "auto"
+        self.on_update_callback = None
         
         self.target_value = 0
         self.fade_timer = QTimer()
-        self.fade_timer.setInterval(40)
+        self.fade_timer.setInterval(100)
         self.fade_timer.timeout.connect(self.fade_step)
         
         self.hourly_check_timer = QTimer()
@@ -171,10 +215,28 @@ class BrightnessWindow(QWidget):
         self.gunduz_btn = QPushButton("☀️ Gündüz")
         self.gunduz_btn.clicked.connect(lambda: self.on_preset_click("gunduz", 100))
 
-        preset_layout.addWidget(self.auto_btn)
-        preset_layout.addWidget(self.gece_btn)
-        preset_layout.addWidget(self.gunduz_btn)
+        preset_layout.addWidget(self.auto_btn, 1)
+        preset_layout.addWidget(self.gece_btn, 1)
+        preset_layout.addWidget(self.gunduz_btn, 1)
         self.main_layout.addLayout(preset_layout)
+
+        self.main_layout.addSpacing(10)
+        
+        night_light_layout = QVBoxLayout()
+        night_light_layout.setSpacing(4)
+        self.night_light_btn = QPushButton("🔥 Gece Işığı")
+        self.night_light_btn.setCheckable(True)
+        self.night_light_btn.clicked.connect(self.toggle_night_light)
+        
+        self.night_light_slider = QSlider(Qt.Horizontal)
+        self.night_light_slider.setRange(0, 100)
+        self.night_light_slider.setValue(15)
+        self.night_light_slider.setEnabled(False)
+        self.night_light_slider.valueChanged.connect(self.update_night_light_opacity)
+        
+        night_light_layout.addWidget(self.night_light_btn)
+        night_light_layout.addWidget(self.night_light_slider)
+        self.main_layout.addLayout(night_light_layout)
 
         self.main_layout.addSpacing(10)
 
@@ -206,8 +268,8 @@ class BrightnessWindow(QWidget):
         self.tray_icon.setToolTip("\n".join(lines))
 
     def update_button_styles(self):
-        active_style = "background-color: #0078D7; border-color: #005a9e; font-weight: bold; color: white;"
-        default_style = "background-color: #333333; border-color: #3d3d3d; font-weight: 500; color: white;"
+        active_style = "background-color: #0078D7; border-color: #005a9e; border-radius: 8px; font-weight: bold; color: white;"
+        default_style = "background-color: #333333; border-color: #3d3d3d; border-radius: 8px; font-weight: 500; color: white;"
 
         self.auto_btn.setStyleSheet(active_style if self.current_mode == "auto" else default_style)
         self.gece_btn.setStyleSheet(active_style if self.current_mode == "gece" else default_style)
@@ -217,17 +279,64 @@ class BrightnessWindow(QWidget):
     def calculate_auto_brightness(self):
         return get_offline_solar_brightness(lat=39.6484, lon=27.8826, tz_offset=3)
 
+    def toggle_night_light(self):
+        self.night_light_enabled = self.night_light_btn.isChecked()
+        self.night_light_slider.setEnabled(self.night_light_enabled)
+        
+        if self.night_light_enabled:
+            self.night_light_btn.setStyleSheet("background-color: #FF8C00; border-color: #e67e22; border-radius: 8px; font-weight: bold; color: white;")
+            if not self.night_light_overlays:
+                for screen in QApplication.screens():
+                    overlay = NightLightOverlay(screen)
+                    overlay.set_opacity(self.night_light_slider.value())
+                    self.night_light_overlays.append(overlay)
+                    overlay.show_overlay()
+            else:
+                for overlay in self.night_light_overlays:
+                    overlay.show_overlay()
+            self.raise_()
+            self.activateWindow()
+        else:
+            self.night_light_btn.setStyleSheet("")
+            for overlay in self.night_light_overlays:
+                overlay.hide_overlay()
+                
+    def update_night_light_opacity(self, value):
+        if not self.night_light_overlays:
+            return
+        for overlay in self.night_light_overlays:
+            overlay.set_opacity(value)
+        self.raise_()
+        self.activateWindow()
+
     def apply_auto_mode(self):
         self.current_mode = "auto"
         self.update_button_styles()
         target = self.calculate_auto_brightness()
         logging.info(f"Güneş Modu Aktif -> Hedef Parlaklık: %{target}")
         self.apply_preset(target)
+        
+        if self.night_light_enabled:
+            self.night_light_btn.setChecked(False)
+            self.toggle_night_light()
+            
+        if self.on_update_callback:
+            self.on_update_callback()
 
     def on_preset_click(self, mode, target_val):
         self.current_mode = mode
         self.update_button_styles()
         self.apply_preset(target_val)
+        
+        if mode == "gece" and not self.night_light_enabled:
+            self.night_light_btn.setChecked(True)
+            self.toggle_night_light()
+        elif mode == "gunduz" and self.night_light_enabled:
+            self.night_light_btn.setChecked(False)
+            self.toggle_night_light()
+            
+        if self.on_update_callback:
+            self.on_update_callback()
 
     def _check_auto_mode(self):
         if self.current_mode == "auto":
@@ -264,19 +373,27 @@ class BrightnessWindow(QWidget):
             self.update_tooltip()
             return
 
-        for mon in monitors:
+        for i, mon in enumerate(monitors, start=1):
             try:
                 current_bright = sbc.get_brightness(display=mon)[0]
             except Exception as e:
                 logging.warning(f"'{mon}' parlaklığı okunamadı, varsayılan %50 atandı: {e}")
                 current_bright = 50
 
+            display_name = mon if mon and str(mon).strip() and "none" not in str(mon).lower() else f"Monitör {i}"
+
+            frame = QFrame()
+            frame.setObjectName("MonitorCard")
+            frame_layout = QVBoxLayout(frame)
+            frame_layout.setContentsMargins(0, 0, 0, 0)
+            frame_layout.setSpacing(8)
+
             header_layout = QHBoxLayout()
-            lbl = QLabel(mon)
+            lbl = QLabel(display_name)
             lbl.setStyleSheet("color: #a0a0a0; font-size: 12px; font-weight: 500;")
             
             val_lbl = QLabel(f"%{current_bright}")
-            val_lbl.setStyleSheet("color: #0078D7; font-size: 12px; font-weight: bold;")
+            val_lbl.setStyleSheet("color: #3399FF; font-size: 14px; font-weight: bold;")
             val_lbl.setAlignment(Qt.AlignRight)
 
             header_layout.addWidget(lbl)
@@ -292,33 +409,49 @@ class BrightnessWindow(QWidget):
 
             self.monitor_controls.append((mon, slider, val_lbl))
             
-            self.monitors_layout.addLayout(header_layout)
-            self.monitors_layout.addWidget(slider)
-            self.monitors_layout.addSpacing(5)
+            frame_layout.addLayout(header_layout)
+            frame_layout.addWidget(slider)
+            
+            self.monitors_layout.addWidget(frame)
+            self.monitors_layout.addSpacing(8)
 
         self.update_tooltip()
+        if self.on_update_callback:
+            self.on_update_callback()
 
     def on_manual_slider_interaction(self):
         if self.current_mode != "custom":
             self.current_mode = "custom"
             self.update_button_styles()
+            if self.on_update_callback:
+                self.on_update_callback()
 
     def showEvent(self, event):
         super().showEvent(event)
+        
+        try:
+            current_monitors = sbc.list_monitors()
+        except Exception:
+            current_monitors = []
+            
+        saved_monitors = [m for m, _, _ in self.monitor_controls]
+        if current_monitors != saved_monitors:
+            self.refresh_monitors()
+        else:
+            for mon, slider, val_lbl in self.monitor_controls:
+                try:
+                    bright = sbc.get_brightness(display=mon)[0]
+                    slider.blockSignals(True)
+                    slider.setValue(bright)
+                    val_lbl.setText(f"%{bright}")
+                    slider.blockSignals(False)
+                except Exception as e:
+                    logging.warning(f"Pencere açılırken '{mon}' güncellenemedi: {e}")
+
         if self.current_mode == "auto":
             auto_target = self.calculate_auto_brightness()
             if self.target_value != auto_target:
                 self.apply_preset(auto_target)
-
-        for mon, slider, val_lbl in self.monitor_controls:
-            try:
-                bright = sbc.get_brightness(display=mon)[0]
-                slider.blockSignals(True)
-                slider.setValue(bright)
-                val_lbl.setText(f"%{bright}")
-                slider.blockSignals(False)
-            except Exception as e:
-                logging.warning(f"Pencere açılırken '{mon}' güncellenemedi: {e}")
                 
         self.update_tooltip()
 
@@ -326,14 +459,16 @@ class BrightnessWindow(QWidget):
         val_label.setText(f"%{value}")
         self.update_tooltip()
         self.hardware_worker.add_task(monitor, value)
+        if self.on_update_callback:
+            self.on_update_callback()
 
     def apply_preset(self, target_value):
         self.target_value = target_value
-        self.fade_timer.start(40)
+        self.fade_timer.start(100)
 
     def fade_step(self):
         all_done = True
-        step_size = 5
+        step_size = 3
         
         for mon, slider, val_lbl in self.monitor_controls:
             current = slider.value()
@@ -352,6 +487,11 @@ class BrightnessWindow(QWidget):
     def closeEvent(self, event):
         event.ignore()
         self.hide()
+        
+    def cleanup_overlays(self):
+        for overlay in self.night_light_overlays:
+            overlay.close()
+        self.night_light_overlays.clear()
 
 
 class SystemTrayApp:
@@ -373,16 +513,27 @@ class SystemTrayApp:
 
         # Animasyon durumu
         self._rotation = 0.0
+        self._last_brightness = -1
+        self._last_rotation = -1.0
+        self._last_mode = None
+
         self._anim_timer = QTimer()
         self._anim_timer.setInterval(50)  # 20 FPS
         self._anim_timer.timeout.connect(self._tick_icon)
-        self._anim_timer.start()
-        self._tick_icon()
+        
+        self.window.on_update_callback = self.check_timer_state
+        self.check_timer_state()
 
         self.tray.activated.connect(self.on_tray_click)
 
         self.menu = QMenu()
         
+        self.refresh_action = QAction("Monitörleri Yenile", self.menu)
+        self.refresh_action.triggered.connect(self.window.refresh_monitors)
+        self.menu.addAction(self.refresh_action)
+        
+        self.menu.addSeparator()
+
         self.startup_action = QAction("Windows ile Başlat", self.menu, checkable=True)
         self.startup_action.setChecked(self.check_startup_status())
         self.startup_action.triggered.connect(self.toggle_startup)
@@ -432,6 +583,7 @@ class SystemTrayApp:
         
         self.window.move(x, y)
         self.window.show()
+        self.window.raise_()
         self.window.activateWindow()
 
     def on_tray_click(self, reason):
@@ -447,7 +599,7 @@ class SystemTrayApp:
             winreg.QueryValueEx(registry_key, self.app_name)
             winreg.CloseKey(registry_key)
             return True
-        except WindowsError:
+        except (FileNotFoundError, OSError):
             return False
 
     def toggle_startup(self, state):
@@ -468,6 +620,15 @@ class SystemTrayApp:
         except Exception as e:
             logging.error(f"Başlangıç ayarı değiştirilirken hata oluştu: {e}")
 
+    def check_timer_state(self):
+        if self.window.current_mode == "auto":
+            if not self._anim_timer.isActive():
+                self._anim_timer.start()
+        else:
+            if self._anim_timer.isActive():
+                self._anim_timer.stop()
+        self._tick_icon()
+
     def _tick_icon(self):
         mode = self.window.current_mode
 
@@ -481,6 +642,13 @@ class SystemTrayApp:
             avg_brightness = sum(s.value() for _, s, _ in self.window.monitor_controls) / len(self.window.monitor_controls)
         else:
             avg_brightness = 50
+
+        if mode == self._last_mode and avg_brightness == self._last_brightness and self._rotation == self._last_rotation:
+            return
+            
+        self._last_mode = mode
+        self._last_brightness = avg_brightness
+        self._last_rotation = self._rotation
 
         self.tray.setIcon(self.create_icon(avg_brightness, self._rotation, mode))
 
@@ -534,6 +702,7 @@ class SystemTrayApp:
         if hasattr(self, 'local_server'):
             self.local_server.close()
             QLocalServer.removeServer(self.server_key)
+        self.window.cleanup_overlays()
         self.window.hardware_worker.stop()
         self.app.quit()
 
