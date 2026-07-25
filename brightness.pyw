@@ -366,11 +366,18 @@ class SystemTrayApp:
         self.app_name = "ParlaklikKontrol_App"
         
         self.tray = QSystemTrayIcon()
-        self.tray.setIcon(self.create_icon())
         self.tray.setVisible(True)
         
         self.window.tray_icon = self.tray
         self.window.update_tooltip()
+
+        # Animasyon durumu
+        self._rotation = 0.0
+        self._anim_timer = QTimer()
+        self._anim_timer.setInterval(50)  # 20 FPS
+        self._anim_timer.timeout.connect(self._tick_icon)
+        self._anim_timer.start()
+        self._tick_icon()
 
         self.tray.activated.connect(self.on_tray_click)
 
@@ -461,19 +468,65 @@ class SystemTrayApp:
         except Exception as e:
             logging.error(f"Başlangıç ayarı değiştirilirken hata oluştu: {e}")
 
-    def create_icon(self):
+    def _tick_icon(self):
+        mode = self.window.current_mode
+
+        # Güneş modunda yavaş döner (60 sn = 1 tam tur → 50ms'de 0.3°)
+        if mode == "auto":
+            self._rotation = (self._rotation + 0.3) % 360.0
+        # Diğer modlarda donup kalır
+
+        # Mevcut ortalama parlaklığı al
+        if self.window.monitor_controls:
+            avg_brightness = sum(s.value() for _, s, _ in self.window.monitor_controls) / len(self.window.monitor_controls)
+        else:
+            avg_brightness = 50
+
+        self.tray.setIcon(self.create_icon(avg_brightness, self._rotation, mode))
+
+    def create_icon(self, brightness=75, rotation=0.0, mode="auto"):
+        from PyQt5.QtCore import QPointF
+        from PyQt5.QtGui import QPen
+        import math as _math
+
         pixmap = QPixmap(32, 32)
         pixmap.fill(Qt.transparent)
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
-        
-        painter.setBrush(QColor("#0078D7"))
-        painter.setPen(Qt.NoPen)
-        painter.drawEllipse(4, 4, 24, 24)
-        
-        painter.setBrush(QColor("#FFFFFF"))
-        painter.drawEllipse(11, 11, 10, 10)
-        
+
+        # Parlaklık 0-100 → renk: koyu gri (#555) → altın (#FFB300)
+        t = max(0.0, min(1.0, brightness / 100.0))
+        r = int(85  + (255 - 85)  * t)
+        g = int(85  + (179 - 85)  * t)
+        b = int(85  + (0   - 85)  * t)
+        sun_color = QColor(r, g, b)
+
+        # Gece modunda çok soluk göster
+        if mode == "gece":
+            sun_color = QColor(60, 60, 60)
+
+        pen = QPen(sun_color)
+        pen.setWidthF(2.0)
+        pen.setCapStyle(Qt.RoundCap)
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+
+        cx, cy = 16.0, 16.0
+        # Daire boyutu da parlaklıkla hafifçe büyür (4.5 - 6.5)
+        r_circle = 4.5 + 2.0 * t
+        painter.drawEllipse(QPointF(cx, cy), r_circle, r_circle)
+
+        # Işın uzunluğu da parlaklıkla uzar (iç: 7-9.5, dış: 10.5-14)
+        ray_inner = 7.0 + 2.5 * t
+        ray_outer = 10.5 + 3.5 * t
+        for i in range(8):
+            angle = _math.radians(rotation + i * 45)
+            x1 = cx + ray_inner * _math.cos(angle)
+            y1 = cy + ray_inner * _math.sin(angle)
+            x2 = cx + ray_outer * _math.cos(angle)
+            y2 = cy + ray_outer * _math.sin(angle)
+            painter.drawLine(QPointF(x1, y1), QPointF(x2, y2))
+
         painter.end()
         return QIcon(pixmap)
 
