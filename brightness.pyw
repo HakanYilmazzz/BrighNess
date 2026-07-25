@@ -8,7 +8,7 @@ from datetime import datetime
 import screen_brightness_control as sbc
 from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, 
                              QSlider, QLabel, QPushButton, QSystemTrayIcon, QMenu, QAction)
-from PyQt5.QtCore import Qt, QTimer, QThread, QObject, QEvent
+from PyQt5.QtCore import Qt, QTimer, QThread
 from PyQt5.QtNetwork import QLocalServer, QLocalSocket
 from PyQt5.QtGui import QIcon, QPixmap, QPainter, QColor, QCursor
 
@@ -88,22 +88,6 @@ class HardwareWorker(QThread):
     def stop(self):
         self.running = False
         self.wait()
-
-
-class TrayWheelFilter(QObject):
-    def __init__(self, window):
-        super().__init__()
-        self.window = window
-
-    def eventFilter(self, obj, event):
-        if event.type() == QEvent.Wheel:
-            delta = event.angleDelta().y()
-            if delta > 0:
-                self.window.adjust_all_brightness(+5)
-            elif delta < 0:
-                self.window.adjust_all_brightness(-5)
-            return True
-        return super().eventFilter(obj, event)
 
 
 class BrightnessWindow(QWidget):
@@ -199,14 +183,6 @@ class BrightnessWindow(QWidget):
         self.setLayout(self.main_layout)
 
         self.refresh_monitors()
-
-    def adjust_all_brightness(self, delta):
-        if self.current_mode != "custom":
-            self.current_mode = "custom"
-            self.update_button_styles()
-        for mon, slider, val_lbl in self.monitor_controls:
-            new_val = max(0, min(100, slider.value() + delta))
-            slider.setValue(new_val)
 
     def update_tooltip(self):
         if not self.tray_icon:
@@ -374,8 +350,8 @@ class BrightnessWindow(QWidget):
             self.fade_timer.stop()
 
     def closeEvent(self, event):
-        self.hardware_worker.stop()
-        super().closeEvent(event)
+        event.ignore()
+        self.hide()
 
 
 class SystemTrayApp:
@@ -395,9 +371,6 @@ class SystemTrayApp:
         
         self.window.tray_icon = self.tray
         self.window.update_tooltip()
-        
-        self.wheel_filter = TrayWheelFilter(self.window)
-        self.app.installEventFilter(self.wheel_filter)
 
         self.tray.activated.connect(self.on_tray_click)
 
