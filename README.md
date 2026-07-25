@@ -20,7 +20,7 @@ Windows işletim sistemleri için geliştirilmiş; çoklu monitör desteğine sa
 - ⚡ **Asenkron Donanım Thread'i (`QThread`)**: Tüm DDC/CI monitör yazma işlemleri arka planda çalışır. Arayüz yavaş monitörlerde bile 0ms gecikmeyle 60 FPS akıcı kalır.
 - 🖱️ **Fare Tekerleği İle Hızlı Kontrol**: Sistem tepsisindeki simge üzerindeyken fare tekerleği çevrilerek penceresiz parlaklık artırılıp azaltılabilir (%5 adımlarla).
 - 🔒 **Tekil Çalışma Kilidi (`QLocalServer`)**: Uygulama açıkken tekrar çift tıklandığında ikinci bir süreç açılmaz, mevcut pencere öne getirilir.
-- 🌅 **Çevrimdışı Güneş Modu (Balıkesir)**: Dış API veya internet gerektirmeden, astronomik Güneş Yüksekliği ($\alpha$) formülü ile gün boyunca parlaklığı yumuşak sinüs eğrisi üzerinden otomatik ayarlar.
+- 🌅 **Çevrimdışı Güneş Modu**: Dış API veya internet gerektirmeden, astronomik Güneş Yüksekliği ($\alpha$) formülü ile gün boyunca parlaklığı yumuşak sinüs eğrisi üzerinden otomatik ayarlar.
 - 🖥️ **Çoklu Monitör Desteği**: Sistemdeki tüm bağlı ekranları (*Dell, Generic Monitor, laptop paneli vb.*) otomatik algılar ve eşzamanlı kontrol sağlar.
 - 🌙 **Hazır Profil Butonları**: Güneş Modu, Gece Modu (%0) ve Gündüz Modu (%100) arasında tek tıkla geçiş.
 - 📌 **Dinamik Tepsi (Tray) Tooltip**: Fare simge üzerindeyken anlık aktif modu ve monitörlerin % parlaklıklarını liste halinde gösterir.
@@ -40,7 +40,7 @@ pip install PyQt5 screen-brightness-control
 ## 🚀 Çalıştırma
 
 ```bash
-pythonw parlaklik.pyw
+pythonw brightness.pyw
 ```
 
 ---

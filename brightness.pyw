@@ -245,7 +245,7 @@ class BrightnessWindow(QWidget):
         self.current_mode = "auto"
         self.update_button_styles()
         target = self.calculate_auto_brightness()
-        logging.info(f"Güneş Modu (Balıkesir) Aktif -> Hedef Parlaklık: %{target}")
+        logging.info(f"Güneş Modu Aktif -> Hedef Parlaklık: %{target}")
         self.apply_preset(target)
 
     def on_preset_click(self, mode, target_val):
