@@ -131,12 +131,12 @@ class BrightnessWindow(QWidget):
             QWidget {
                 background-color: #202020;
                 color: white;
-                border-radius: 10px;
+                border-radius: 14px;
                 font-family: 'Segoe UI', sans-serif;
             }
             QFrame#MonitorCard {
                 background-color: #2a2a2a;
-                border-radius: 8px;
+                border-radius: 12px;
                 padding: 10px;
             }
             QFrame#MonitorCard QLabel {
@@ -171,7 +171,7 @@ class BrightnessWindow(QWidget):
             }
             QPushButton {
                 background-color: #333333;
-                border-radius: 8px;
+                border-radius: 10px;
                 padding: 6px 10px;
                 font-weight: 500;
                 font-size: 12px;
@@ -191,10 +191,10 @@ class BrightnessWindow(QWidget):
         self.fade_timer.setInterval(100)
         self.fade_timer.timeout.connect(self.fade_step)
         
-        self.hourly_check_timer = QTimer()
-        self.hourly_check_timer.setInterval(60000)
-        self.hourly_check_timer.timeout.connect(self._check_auto_mode)
-        self.hourly_check_timer.start()
+        self.auto_mode_check_timer = QTimer()
+        self.auto_mode_check_timer.setInterval(60000)
+        self.auto_mode_check_timer.timeout.connect(self._check_auto_mode)
+        self.auto_mode_check_timer.start()
 
         self.initUI()
         self.apply_auto_mode()
@@ -220,23 +220,41 @@ class BrightnessWindow(QWidget):
         preset_layout.addWidget(self.gunduz_btn, 1)
         self.main_layout.addLayout(preset_layout)
 
-        self.main_layout.addSpacing(10)
-        
+        self.custom_mode_lbl = QLabel("")
+        self.custom_mode_lbl.setAlignment(Qt.AlignCenter)
+        self.custom_mode_lbl.setStyleSheet("color: #3399FF; font-size: 11px; font-weight: 600; background-color: transparent;")
+        self.custom_mode_lbl.setFixedHeight(16)
+        self.main_layout.addWidget(self.custom_mode_lbl)
+
+        self.main_layout.addSpacing(6)
+
         night_light_layout = QVBoxLayout()
-        night_light_layout.setSpacing(4)
-        self.night_light_btn = QPushButton("🔥 Gece Işığı")
+        night_light_layout.setSpacing(6)
+
+        night_light_header = QHBoxLayout()
+        self.night_light_lbl = QLabel("🔥 Gece Işığı")
+        self.night_light_lbl.setStyleSheet("color: #d0d0d0; font-size: 12px; font-weight: 500; background-color: transparent;")
+
+        self.night_light_btn = QPushButton("●")
         self.night_light_btn.setCheckable(True)
+        self.night_light_btn.setFixedSize(44, 24)
+        self.night_light_btn.setCursor(Qt.PointingHandCursor)
         self.night_light_btn.clicked.connect(self.toggle_night_light)
-        
+
+        night_light_header.addWidget(self.night_light_lbl)
+        night_light_header.addStretch()
+        night_light_header.addWidget(self.night_light_btn)
+
         self.night_light_slider = QSlider(Qt.Horizontal)
         self.night_light_slider.setRange(0, 100)
         self.night_light_slider.setValue(15)
         self.night_light_slider.setEnabled(False)
         self.night_light_slider.valueChanged.connect(self.update_night_light_opacity)
-        
-        night_light_layout.addWidget(self.night_light_btn)
+
+        night_light_layout.addLayout(night_light_header)
         night_light_layout.addWidget(self.night_light_slider)
         self.main_layout.addLayout(night_light_layout)
+        self.update_night_light_switch_style()
 
         self.main_layout.addSpacing(10)
 
@@ -274,30 +292,71 @@ class BrightnessWindow(QWidget):
         self.auto_btn.setStyleSheet(active_style if self.current_mode == "auto" else default_style)
         self.gece_btn.setStyleSheet(active_style if self.current_mode == "gece" else default_style)
         self.gunduz_btn.setStyleSheet(active_style if self.current_mode == "gunduz" else default_style)
+        self.custom_mode_lbl.setText("● Özel Mod Aktif" if self.current_mode == "custom" else "")
         self.update_tooltip()
 
     def calculate_auto_brightness(self):
         return get_offline_solar_brightness(lat=39.6484, lon=27.8826, tz_offset=3)
 
+    def rebuild_night_light_overlays(self):
+        for overlay in self.night_light_overlays:
+            overlay.close()
+        self.night_light_overlays.clear()
+
+        for screen in QApplication.screens():
+            overlay = NightLightOverlay(screen)
+            overlay.set_opacity(self.night_light_slider.value())
+            self.night_light_overlays.append(overlay)
+
+    def update_night_light_switch_style(self):
+        if self.night_light_enabled:
+            style = """
+                QPushButton {
+                    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #FFA733, stop:1 #FF8C00);
+                    border: 1px solid #e67e22;
+                    border-radius: 12px;
+                    color: white;
+                    font-size: 15px;
+                    text-align: right;
+                    padding-right: 3px;
+                }
+                QPushButton:hover {
+                    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #FFB74D, stop:1 #FF9800);
+                }
+            """
+        else:
+            style = """
+                QPushButton {
+                    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #3d3d3d, stop:1 #333333);
+                    border: 1px solid #4a4a4a;
+                    border-radius: 12px;
+                    color: #9a9a9a;
+                    font-size: 15px;
+                    text-align: left;
+                    padding-left: 3px;
+                }
+                QPushButton:hover {
+                    background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                        stop:0 #464646, stop:1 #3a3a3a);
+                }
+            """
+        self.night_light_btn.setStyleSheet(style)
+
     def toggle_night_light(self):
         self.night_light_enabled = self.night_light_btn.isChecked()
         self.night_light_slider.setEnabled(self.night_light_enabled)
-        
+        self.update_night_light_switch_style()
+
         if self.night_light_enabled:
-            self.night_light_btn.setStyleSheet("background-color: #FF8C00; border-color: #e67e22; border-radius: 8px; font-weight: bold; color: white;")
-            if not self.night_light_overlays:
-                for screen in QApplication.screens():
-                    overlay = NightLightOverlay(screen)
-                    overlay.set_opacity(self.night_light_slider.value())
-                    self.night_light_overlays.append(overlay)
-                    overlay.show_overlay()
-            else:
-                for overlay in self.night_light_overlays:
-                    overlay.show_overlay()
+            self.rebuild_night_light_overlays()
+            for overlay in self.night_light_overlays:
+                overlay.show_overlay()
             self.raise_()
             self.activateWindow()
         else:
-            self.night_light_btn.setStyleSheet("")
             for overlay in self.night_light_overlays:
                 overlay.hide_overlay()
                 
@@ -351,11 +410,6 @@ class BrightnessWindow(QWidget):
             widget = item.widget()
             if widget:
                 widget.deleteLater()
-            elif item.layout():
-                while item.layout().count():
-                    sub_item = item.layout().takeAt(0)
-                    if sub_item.widget():
-                        sub_item.widget().deleteLater()
 
         self.monitor_controls.clear()
 
@@ -437,6 +491,10 @@ class BrightnessWindow(QWidget):
         saved_monitors = [m for m, _, _ in self.monitor_controls]
         if current_monitors != saved_monitors:
             self.refresh_monitors()
+            if self.night_light_enabled:
+                self.rebuild_night_light_overlays()
+                for overlay in self.night_light_overlays:
+                    overlay.show_overlay()
         else:
             for mon, slider, val_lbl in self.monitor_controls:
                 try:
@@ -506,8 +564,7 @@ class SystemTrayApp:
         self.app_name = "ParlaklikKontrol_App"
         
         self.tray = QSystemTrayIcon()
-        self.tray.setVisible(True)
-        
+
         self.window.tray_icon = self.tray
         self.window.update_tooltip()
 
@@ -520,10 +577,11 @@ class SystemTrayApp:
         self._anim_timer = QTimer()
         self._anim_timer.setInterval(50)  # 20 FPS
         self._anim_timer.timeout.connect(self._tick_icon)
-        
+
         self.window.on_update_callback = self.check_timer_state
         self.check_timer_state()
 
+        self.tray.setVisible(True)
         self.tray.activated.connect(self.on_tray_click)
 
         self.menu = QMenu()
@@ -595,9 +653,8 @@ class SystemTrayApp:
     def check_startup_status(self):
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
         try:
-            registry_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_READ)
-            winreg.QueryValueEx(registry_key, self.app_name)
-            winreg.CloseKey(registry_key)
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_READ) as registry_key:
+                winreg.QueryValueEx(registry_key, self.app_name)
             return True
         except (FileNotFoundError, OSError):
             return False
@@ -605,18 +662,17 @@ class SystemTrayApp:
     def toggle_startup(self, state):
         key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
         try:
-            registry_key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_ALL_ACCESS)
-            if state:
-                script_path = os.path.abspath(sys.argv[0])
-                if script_path.endswith('.pyw') or script_path.endswith('.py'):
-                    pythonw_exe = sys.executable.replace("python.exe", "pythonw.exe")
-                    command = f'"{pythonw_exe}" "{script_path}"'
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_ALL_ACCESS) as registry_key:
+                if state:
+                    script_path = os.path.abspath(sys.argv[0])
+                    if script_path.endswith('.pyw') or script_path.endswith('.py'):
+                        pythonw_exe = sys.executable.replace("python.exe", "pythonw.exe")
+                        command = f'"{pythonw_exe}" "{script_path}"'
+                    else:
+                        command = f'"{script_path}"'
+                    winreg.SetValueEx(registry_key, self.app_name, 0, winreg.REG_SZ, command)
                 else:
-                    command = f'"{script_path}"'
-                winreg.SetValueEx(registry_key, self.app_name, 0, winreg.REG_SZ, command)
-            else:
-                winreg.DeleteValue(registry_key, self.app_name)
-            winreg.CloseKey(registry_key)
+                    winreg.DeleteValue(registry_key, self.app_name)
         except Exception as e:
             logging.error(f"Başlangıç ayarı değiştirilirken hata oluştu: {e}")
 
@@ -662,38 +718,54 @@ class SystemTrayApp:
         painter = QPainter(pixmap)
         painter.setRenderHint(QPainter.Antialiasing)
 
-        # Parlaklık 0-100 → renk: koyu gri (#555) → altın (#FFB300)
+        # Parlaklık 0-100 → renk: soluk gri (#828282) → altın (#FFB300)
+        # Not: taban rengi eskiden #555 idi, koyu görev çubuklarında neredeyse
+        # kayboluyordu; taban rengini yükselttik ki %0 parlaklıkta bile seçilebilsin.
         t = max(0.0, min(1.0, brightness / 100.0))
-        r = int(85  + (255 - 85)  * t)
-        g = int(85  + (179 - 85)  * t)
-        b = int(85  + (0   - 85)  * t)
+        r = int(130 + (255 - 130) * t)
+        g = int(130 + (179 - 130) * t)
+        b = int(130 + (0   - 130) * t)
         sun_color = QColor(r, g, b)
 
-        # Gece modunda çok soluk göster
+        # Gece modunda soluk ama yine de fark edilir bir mavi-gri
         if mode == "gece":
-            sun_color = QColor(60, 60, 60)
-
-        pen = QPen(sun_color)
-        pen.setWidthF(2.0)
-        pen.setCapStyle(Qt.RoundCap)
-        painter.setPen(pen)
-        painter.setBrush(Qt.NoBrush)
+            sun_color = QColor(140, 145, 155)
 
         cx, cy = 16.0, 16.0
-        # Daire boyutu da parlaklıkla hafifçe büyür (4.5 - 6.5)
-        r_circle = 4.5 + 2.0 * t
+        # Küçük görev çubuğu boyutunda (16-24px) net seçilsin diye daire
+        # dolgulu çizilir ve ışın sayısı 8'den 6'ya indirildi.
+        r_circle = 5.5 + 2.5 * t
+        ray_inner = r_circle + 2.5
+        ray_outer = ray_inner + 4.0 + 1.5 * t
+
+        outline_color = QColor(0, 0, 0, 130)
+
+        ray_outline_pen = QPen(outline_color)
+        ray_outline_pen.setWidthF(2.6)
+        ray_outline_pen.setCapStyle(Qt.RoundCap)
+
+        ray_pen = QPen(sun_color)
+        ray_pen.setWidthF(1.6)
+        ray_pen.setCapStyle(Qt.RoundCap)
+
+        # Dış hat halkası (kontrast için), üstüne dolgulu güneş gövdesi
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(outline_color)
+        painter.drawEllipse(QPointF(cx, cy), r_circle + 0.9, r_circle + 0.9)
+
+        painter.setBrush(sun_color)
         painter.drawEllipse(QPointF(cx, cy), r_circle, r_circle)
 
-        # Işın uzunluğu da parlaklıkla uzar (iç: 7-9.5, dış: 10.5-14)
-        ray_inner = 7.0 + 2.5 * t
-        ray_outer = 10.5 + 3.5 * t
-        for i in range(8):
-            angle = _math.radians(rotation + i * 45)
-            x1 = cx + ray_inner * _math.cos(angle)
-            y1 = cy + ray_inner * _math.sin(angle)
-            x2 = cx + ray_outer * _math.cos(angle)
-            y2 = cy + ray_outer * _math.sin(angle)
-            painter.drawLine(QPointF(x1, y1), QPointF(x2, y2))
+        for active_pen in (ray_outline_pen, ray_pen):
+            painter.setPen(active_pen)
+            painter.setBrush(Qt.NoBrush)
+            for i in range(6):
+                angle = _math.radians(rotation + i * 60)
+                x1 = cx + ray_inner * _math.cos(angle)
+                y1 = cy + ray_inner * _math.sin(angle)
+                x2 = cx + ray_outer * _math.cos(angle)
+                y2 = cy + ray_outer * _math.sin(angle)
+                painter.drawLine(QPointF(x1, y1), QPointF(x2, y2))
 
         painter.end()
         return QIcon(pixmap)

@@ -17,13 +17,13 @@ Windows işletim sistemleri için geliştirilmiş; çoklu monitör desteğine sa
 
 ## ✨ Öne Çıkan Özellikler
 
-- 🌅 **Animasyonlu Tepsi İkonu**: Güneş modu aktifken ikon yavaşça döner. İkonun rengi, daire boyutu ve ışın uzunluğu anlık ekran parlaklığını yansıtır; %0'da soluk gri, %100'de parlak altın sarısıdır.
+- 🌅 **Animasyonlu Tepsi İkonu**: Güneş modu aktifken ikon yavaşça döner. Dolgulu güneş gövdesi, anlık ekran parlaklığına göre renk ve boyut değiştirir; kontrast dış hattı sayesinde %0 parlaklıkta bile hem koyu hem açık görev çubuğu temalarında net seçilir.
 - ⚡ **Asenkron Donanım Thread'i (`QThread`)**: Tüm DDC/CI monitör yazma işlemleri arka planda çalışır. Arayüz yavaş monitörlerde bile 0ms gecikmeyle 60 FPS akıcı kalır.
 - 🔒 **Tekil Çalışma Kilidi (`QLocalServer`)**: Uygulama açıkken tekrar çift tıklandığında ikinci bir süreç açılmaz, mevcut pencere öne getirilir.
 - 🌍 **Çevrimdışı Güneş Modu**: Dış API veya internet gerektirmeden, astronomik Güneş Yüksekliği (α) formülü ile gün boyunca parlaklığı yumuşak sinüs eğrisi üzerinden otomatik ayarlar.
 - 🖥️ **Çoklu Monitör & Hot-Plug Desteği**: Sistemdeki tüm bağlı ekranları otomatik algılar. Monitör takıp çıkarıldığında anında arayüzü günceller ve eşzamanlı kontrol sağlar. Monitör ismi okunamayan ekranlar için akıllı isim düşüşü (fallback) uygular.
-- 🌙 **Gece Işığı (Night Light) Filtresi**: Windows API'lerine dokunmadan saf PyQt5 (`Qt.WindowTransparentForInput`) üzerinden ekranlara tıklama geçiren, göz yormayan, yoğunluğu ayarlanabilir turuncu şeffaf bir katman çizer. Diğer modlarla (özellikle Gece Modu) senkronize otomatik devreye girer.
-- 🎨 **Hazır Profil Butonları**: Güneş Modu, Gece Modu (%0) ve Gündüz Modu (%100) arasında tek tıkla geçiş. Aktif mod mavi vurgu ile belirtilir.
+- 🌙 **Gece Işığı (Night Light) Filtresi**: Windows API'lerine dokunmadan saf PyQt5 (`Qt.WindowTransparentForInput`) üzerinden ekranlara tıklama geçiren, göz yormayan, yoğunluğu ayarlanabilir turuncu şeffaf bir katman çizer. Kompakt bir toggle switch ile açılıp kapanır; monitör takılıp çıkarıldığında overlay'ler otomatik yeniden kurulur. Diğer modlarla (özellikle Gece Modu) senkronize otomatik devreye girer.
+- 🎨 **Hazır Profil Butonları**: Güneş Modu, Gece Modu (%0) ve Gündüz Modu (%100) arasında tek tıkla geçiş. Aktif mod mavi vurgu ile belirtilir; bir slider elle değiştirildiğinde arayüz bunu "Özel Mod Aktif" etiketiyle ayrıca gösterir.
 - 📌 **Dinamik Tepsi Tooltip**: Fare simge üzerindeyken anlık aktif modu ve tüm monitörlerin % parlaklıklarını canlı gösterir.
 - 🔄 **Windows Başlangıç Kaydı**: Sistem başlangıcına ekleme/çıkarma opsiyonu (Windows Registry `HKCU` entegrasyonu).
 
@@ -34,9 +34,9 @@ Windows işletim sistemleri için geliştirilmiş; çoklu monitör desteğine sa
 | Durum | İkon Görünümü |
 | :--- | :--- |
 | **Güneş Modu** | Işınlar yavaşça döner (dakikada ~3 tur), parlaklığa göre altın rengi |
-| **Gündüz Modu (%100)** | Tam parlak altın sarı, büyük daire, uzun ışınlar |
+| **Gündüz Modu (%100)** | Tam parlak altın sarı, büyük dolgulu daire, uzun ışınlar |
 | **Parlaklık %50** | Orta ton, orta boyut |
-| **Gece Modu (%0)** | Soluk koyu gri, küçük daire, kısa ışınlar, dönme durur |
+| **Gece Modu (%0)** | Soluk mavi-gri, küçük daire, kısa ışınlar, dönme durur |
 
 ---
 
