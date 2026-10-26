@@ -1,2 +1,2 @@
-PyQt5>=5.15
+PyQt6>=6.6
 screen-brightness-control>=0.27

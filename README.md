@@ -1,7 +1,7 @@
 # ☀️ Windows Parlaklık Kontrolü (System Tray App)
 
 ![Python](https://img.shields.io/badge/Python-3.8+-blue.svg)
-![GUI](https://img.shields.io/badge/GUI-PyQt5-green.svg)
+![GUI](https://img.shields.io/badge/GUI-PyQt6-green.svg)
 ![OS](https://img.shields.io/badge/OS-Windows-0078D7.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 

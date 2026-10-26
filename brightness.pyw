@@ -10,13 +10,13 @@ from logging.handlers import RotatingFileHandler
 from datetime import datetime, timedelta
 
 import screen_brightness_control as sbc
-from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QSlider, QLabel,
-                             QPushButton, QSystemTrayIcon, QMenu, QAction, QActionGroup, QFrame,
+from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QSlider, QLabel,
+                             QPushButton, QSystemTrayIcon, QMenu, QFrame,
                              QGraphicsDropShadowEffect, QLayout)
-from PyQt5.QtCore import Qt, QTimer, QThread, QPointF, QRectF, QSize, pyqtSignal
-from PyQt5.QtNetwork import QLocalServer, QLocalSocket
-from PyQt5.QtGui import (QIcon, QPixmap, QPainter, QColor, QCursor, QPaintEvent, QPen, QBrush,
-                         QPainterPath, QLinearGradient, QFont)
+from PyQt6.QtCore import Qt, QTimer, QThread, QPointF, QRectF, QSize, pyqtSignal
+from PyQt6.QtNetwork import QLocalServer, QLocalSocket
+from PyQt6.QtGui import (QIcon, QPixmap, QPainter, QColor, QCursor, QPaintEvent, QPen, QBrush,
+                         QPainterPath, QLinearGradient, QFont, QAction, QActionGroup)
 
 APP_NAME = "ParlaklikKontrol"
 SINGLE_INSTANCE_KEY = "ParlaklikKontrolApp_SingleInstance_Key"
@@ -178,15 +178,15 @@ def sun_times(date, lat, lon, tz_offset):
 def glyph(kind, color, size=18):
     px = size * 2
     pm = QPixmap(px, px)
-    pm.fill(Qt.transparent)
+    pm.fill(Qt.GlobalColor.transparent)
     p = QPainter(pm)
-    p.setRenderHint(QPainter.Antialiasing)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
     col = QColor(color)
     c = QPointF(px / 2, px / 2)
 
     def rays(center, r_in, r_out, angles_deg):
         pen = QPen(col, px * 0.085)
-        pen.setCapStyle(Qt.RoundCap)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         p.setPen(pen)
         for a in angles_deg:
             rad = math.radians(a)
@@ -195,7 +195,7 @@ def glyph(kind, color, size=18):
 
     if kind == "sun":
         r = px * 0.19
-        p.setPen(Qt.NoPen)
+        p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(col)
         p.drawEllipse(c, r, r)
         rays(c, r + px * 0.1, r + px * 0.22, range(0, 360, 45))
@@ -203,12 +203,12 @@ def glyph(kind, color, size=18):
         hy = px * 0.70
         center = QPointF(px / 2, hy)
         r = px * 0.2
-        p.setPen(Qt.NoPen)
+        p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(col)
         p.drawPie(QRectF(center.x() - r, hy - r, 2 * r, 2 * r), 0, 180 * 16)
         rays(center, r + px * 0.09, r + px * 0.2, (25, 65, 115, 155))
         pen = QPen(col, px * 0.085)
-        pen.setCapStyle(Qt.RoundCap)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         p.setPen(pen)
         p.drawLine(QPointF(px * 0.1, hy + px * 0.1), QPointF(px * 0.9, hy + px * 0.1))
     elif kind == "moon":
@@ -238,9 +238,9 @@ def glyph(kind, color, size=18):
 class NightLightOverlay(QWidget):
     def __init__(self, screen):
         super().__init__()
-        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool | Qt.WindowTransparentForInput)
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setAttribute(Qt.WA_ShowWithoutActivating, True)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Tool | Qt.WindowType.WindowTransparentForInput)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
 
         self._opacity = 0.15
         self.setGeometry(screen.geometry())
@@ -352,7 +352,7 @@ class SunCurve(QWidget):
         if len(self._points) < 2:
             return
         p = QPainter(self)
-        p.setRenderHint(QPainter.Antialiasing)
+        p.setRenderHint(QPainter.RenderHint.Antialiasing)
         w, h = self.width(), self.height()
         left, right, top, bottom = 6.0, w - 6.0, 6.0, h - 15.0
         n = len(self._points)
@@ -376,7 +376,7 @@ class SunCurve(QWidget):
         p.fillPath(fill, QBrush(grad))
 
         p.setPen(QPen(QColor("#3399FF"), 1.6))
-        p.setBrush(Qt.NoBrush)
+        p.setBrush(Qt.BrushStyle.NoBrush)
         p.drawPath(line)
 
         p.setPen(QColor("#7d7d7d"))
@@ -386,7 +386,7 @@ class SunCurve(QWidget):
         for hour in (0, 6, 12, 18, 24):
             x = left + (right - left) * hour / 24.0
             box_x = min(max(x - 12, 0), w - 24)
-            p.drawText(QRectF(box_x, bottom + 2, 24, 12), Qt.AlignCenter, f"{hour:02d}")
+            p.drawText(QRectF(box_x, bottom + 2, 24, 12), Qt.AlignmentFlag.AlignCenter, f"{hour:02d}")
 
         # şimdiki an
         idx = self._frac * (n - 1)
@@ -395,9 +395,9 @@ class SunCurve(QWidget):
         a, b = pt(i0), pt(i1)
         t = idx - i0
         now_pt = QPointF(a.x() + (b.x() - a.x()) * t, a.y() + (b.y() - a.y()) * t)
-        p.setPen(QPen(QColor(255, 255, 255, 90), 1, Qt.DashLine))
+        p.setPen(QPen(QColor(255, 255, 255, 90), 1, Qt.PenStyle.DashLine))
         p.drawLine(QPointF(now_pt.x(), top), QPointF(now_pt.x(), bottom))
-        p.setPen(Qt.NoPen)
+        p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor("#FFB300"))
         p.drawEllipse(now_pt, 3.8, 3.8)
 
@@ -429,22 +429,22 @@ STYLE = """
     QSlider::handle:horizontal:disabled { background: #5a5a5a; border: 2px solid #5a5a5a; }
     QPushButton {
         background-color: #333333; border-radius: 10px; padding: 6px 10px;
-        font-weight: 500; font-size: 12px; color: white; border: 1px solid #3d3d3d;
+        font-weight: 600; font-size: 12px; color: white; border: 1px solid #3d3d3d;
     }
     QPushButton:hover { background-color: #444444; }
     QPushButton:pressed { background-color: #1c1c1c; }
 """
 
 BTN_ACTIVE = "background-color: #0078D7; border-color: #005a9e; border-radius: 10px; font-weight: bold; color: white;"
-BTN_DEFAULT = "background-color: #333333; border-color: #3d3d3d; border-radius: 10px; font-weight: 500; color: white;"
+BTN_DEFAULT = "background-color: #333333; border-color: #3d3d3d; border-radius: 10px; font-weight: 600; color: white;"
 
 
 class BrightnessWindow(QWidget):
     def __init__(self, settings):
         super().__init__()
         self.settings = settings
-        self.setWindowFlags(Qt.Popup | Qt.FramelessWindowHint | Qt.NoDropShadowWindowHint | Qt.WindowStaysOnTopHint)
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
+        self.setWindowFlags(Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint | Qt.WindowType.NoDropShadowWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
 
         self.tray_icon = None
         self.on_update_callback = None
@@ -501,7 +501,7 @@ class BrightnessWindow(QWidget):
     def initUI(self):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(SHADOW, SHADOW, SHADOW, SHADOW)
-        outer.setSizeConstraint(QLayout.SetFixedSize)  # pencere içeriğe göre boyutlanır
+        outer.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)  # pencere içeriğe göre boyutlanır
 
         self.root = QFrame()
         self.root.setObjectName("Root")
@@ -526,7 +526,7 @@ class BrightnessWindow(QWidget):
         self._btn_kinds = [(self.auto_btn, "auto"), (self.gece_btn, "moon"), (self.gunduz_btn, "sun")]
         for btn, _ in self._btn_kinds:
             btn.setIconSize(QSize(16, 16))
-            btn.setCursor(Qt.PointingHandCursor)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
             preset_layout.addWidget(btn, 1)
         self.auto_btn.clicked.connect(self.apply_auto_mode)
         self.gece_btn.clicked.connect(lambda: self.on_preset_click("gece"))
@@ -534,7 +534,7 @@ class BrightnessWindow(QWidget):
         self.main_layout.addLayout(preset_layout)
 
         self.custom_mode_lbl = QLabel("")
-        self.custom_mode_lbl.setAlignment(Qt.AlignCenter)
+        self.custom_mode_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.custom_mode_lbl.setStyleSheet("color: #3399FF; font-size: 11px; font-weight: 600;")
         self.custom_mode_lbl.setFixedHeight(18)
         self.main_layout.addWidget(self.custom_mode_lbl)
@@ -546,7 +546,7 @@ class BrightnessWindow(QWidget):
         sun_layout.setContentsMargins(10, 8, 10, 6)
         sun_layout.setSpacing(2)
         self.sun_info_lbl = QLabel("")
-        self.sun_info_lbl.setStyleSheet("color: #c8c8c8; font-size: 11px; font-weight: 500;")
+        self.sun_info_lbl.setStyleSheet("color: #c8c8c8; font-size: 11px; font-weight: 600;")
         self.sun_times_lbl = QLabel("")
         self.sun_times_lbl.setStyleSheet("color: #8a8a8a; font-size: 10px;")
         self.sun_curve = SunCurve()
@@ -561,11 +561,11 @@ class BrightnessWindow(QWidget):
         flame = QLabel()
         flame.setPixmap(glyph("flame", "#FF9F2E", 16).pixmap(16, 16))
         self.night_light_lbl = QLabel("Gece Işığı")
-        self.night_light_lbl.setStyleSheet("color: #d0d0d0; font-size: 12px; font-weight: 500;")
+        self.night_light_lbl.setStyleSheet("color: #d0d0d0; font-size: 12px; font-weight: 600;")
         self.night_light_btn = QPushButton("●")
         self.night_light_btn.setCheckable(True)
         self.night_light_btn.setFixedSize(44, 24)
-        self.night_light_btn.setCursor(Qt.PointingHandCursor)
+        self.night_light_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.night_light_btn.clicked.connect(self.toggle_night_light)
         night_light_header.addWidget(flame)
         night_light_header.addSpacing(6)
@@ -575,7 +575,7 @@ class BrightnessWindow(QWidget):
         self.main_layout.addLayout(night_light_header)
         self.main_layout.addSpacing(6)
 
-        self.night_light_slider = QSlider(Qt.Horizontal)
+        self.night_light_slider = QSlider(Qt.Orientation.Horizontal)
         self.night_light_slider.setRange(0, 100)
         self.night_light_slider.setValue(self.settings["night_light_strength"])
         self.night_light_slider.setEnabled(False)
@@ -596,8 +596,8 @@ class BrightnessWindow(QWidget):
     def _show_monitor_message(self, text, color):
         self._clear_layout(self.monitors_layout)
         lbl = QLabel(text)
-        lbl.setStyleSheet(f"color: {color}; font-size: 13px; font-weight: 500;")
-        lbl.setAlignment(Qt.AlignCenter)
+        lbl.setStyleSheet(f"color: {color}; font-size: 13px; font-weight: 600;")
+        lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.monitors_layout.addWidget(lbl)
 
     @staticmethod
@@ -838,8 +838,8 @@ class BrightnessWindow(QWidget):
 
         if not monitors:
             lbl = QLabel("Monitör Bulunamadı")
-            lbl.setStyleSheet("color: #ff6b6b; font-size: 13px; font-weight: 500;")
-            lbl.setAlignment(Qt.AlignCenter)
+            lbl.setStyleSheet("color: #ff6b6b; font-size: 13px; font-weight: 600;")
+            lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
             self.monitors_layout.addWidget(lbl)
             self._relayout()
             return
@@ -858,15 +858,15 @@ class BrightnessWindow(QWidget):
 
             header = QHBoxLayout()
             lbl = QLabel(display_name)
-            lbl.setStyleSheet("color: #a0a0a0; font-size: 12px; font-weight: 500;")
+            lbl.setStyleSheet("color: #a0a0a0; font-size: 12px; font-weight: 600;")
             val_lbl = QLabel(f"%{current}")
             val_lbl.setStyleSheet("color: #3399FF; font-size: 14px; font-weight: bold;")
-            val_lbl.setAlignment(Qt.AlignRight)
+            val_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
             header.addWidget(lbl)
             header.addStretch()
             header.addWidget(val_lbl)
 
-            slider = QSlider(Qt.Horizontal)
+            slider = QSlider(Qt.Orientation.Horizontal)
             slider.setRange(0, 100)
             slider.setValue(current)
             slider.valueChanged.connect(lambda val, m=mon, vl=val_lbl: self.on_slider_changed(m, val, vl))
@@ -957,8 +957,6 @@ class BrightnessWindow(QWidget):
 # ----------------------------------------------------------------------------
 class SystemTrayApp:
     def __init__(self):
-        QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-        QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
         self.app = QApplication(sys.argv)
         self.app.setQuitOnLastWindowClosed(False)
 
@@ -1052,9 +1050,9 @@ class SystemTrayApp:
         self.window.activateWindow()
 
     def on_tray_click(self, reason):
-        if reason == QSystemTrayIcon.Trigger:
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self.show_window()
-        elif reason == QSystemTrayIcon.MiddleClick:
+        elif reason == QSystemTrayIcon.ActivationReason.MiddleClick:
             self.window.apply_auto_mode()
 
     def check_startup_status(self):
@@ -1106,9 +1104,9 @@ class SystemTrayApp:
     def create_icon(self, brightness=75, mode="auto"):
         scale = 2
         pixmap = QPixmap(32 * scale, 32 * scale)
-        pixmap.fill(Qt.transparent)
+        pixmap.fill(Qt.GlobalColor.transparent)
         painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.scale(scale, scale)
 
         # Parlaklık 0-100 → renk: soluk gri (#828282) → altın (#FFB300)
@@ -1125,12 +1123,12 @@ class SystemTrayApp:
 
         ray_outline_pen = QPen(outline_color)
         ray_outline_pen.setWidthF(2.6)
-        ray_outline_pen.setCapStyle(Qt.RoundCap)
+        ray_outline_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         ray_pen = QPen(sun_color)
         ray_pen.setWidthF(1.6)
-        ray_pen.setCapStyle(Qt.RoundCap)
+        ray_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
 
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(outline_color)
         painter.drawEllipse(QPointF(cx, cy), r_circle + 0.9, r_circle + 0.9)
         painter.setBrush(sun_color)
@@ -1138,7 +1136,7 @@ class SystemTrayApp:
 
         for active_pen in (ray_outline_pen, ray_pen):
             painter.setPen(active_pen)
-            painter.setBrush(Qt.NoBrush)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
             for i in range(6):
                 angle = math.radians(i * 60)
                 painter.drawLine(QPointF(cx + ray_inner * math.cos(angle), cy + ray_inner * math.sin(angle)),
@@ -1157,7 +1155,7 @@ class SystemTrayApp:
         self.app.quit()
 
     def run(self):
-        sys.exit(self.app.exec_())
+        sys.exit(self.app.exec())
 
 
 if __name__ == "__main__":
