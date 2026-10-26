@@ -53,6 +53,8 @@ def setup_logging():
         logging.basicConfig(level=logging.INFO, handlers=[handler])
     except Exception:
         logging.basicConfig(level=logging.INFO)
+    # Kütüphane masaüstü PC'de her çağrıda "laptop ekranları alınamadı" (WMI 0x8004100c) uyarısı verir; zararsız ama günlüğü doldurur
+    logging.getLogger("screen_brightness_control").setLevel(logging.ERROR)
 
     def _excepthook(exc_type, exc, tb):
         logging.critical("Yakalanmamış hata", exc_info=(exc_type, exc, tb))
