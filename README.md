@@ -5,54 +5,67 @@
 ![OS](https://img.shields.io/badge/OS-Windows-0078D7.svg)
 ![License](https://img.shields.io/badge/License-MIT-orange.svg)
 
-Windows işletim sistemleri için geliştirilmiş; çoklu monitör desteğine sahip, modern Windows 11 koyu temalı ve **%100 Çevrimdışı Güneş Yüksekliği (NOAA Solar Calculation)** algoritması içeren şık bir sistem tepsisi (system tray) parlaklık kontrol uygulaması.
+Windows için çoklu monitör destekli, Windows 11 koyu temalı, **%100 çevrimdışı güneş yüksekliği (NOAA)** hesabıyla çalışan bir sistem tepsisi parlaklık kontrol uygulaması.
 
 ---
 
-## 📸 Arayüz Ekran Görüntüsü
+## 📸 Arayüz
 
 ![Parlaklık Kontrolü Arayüzü](ss.png)
 
 ---
 
-## ✨ Öne Çıkan Özellikler
+## ✨ Özellikler
 
-- 🌅 **Animasyonlu Tepsi İkonu**: Güneş modu aktifken ikon yavaşça döner. Dolgulu güneş gövdesi, anlık ekran parlaklığına göre renk ve boyut değiştirir; kontrast dış hattı sayesinde %0 parlaklıkta bile hem koyu hem açık görev çubuğu temalarında net seçilir.
-- ⚡ **Asenkron Donanım Thread'i (`QThread`)**: Tüm DDC/CI monitör yazma işlemleri arka planda çalışır. Arayüz yavaş monitörlerde bile 0ms gecikmeyle 60 FPS akıcı kalır.
-- 🔒 **Tekil Çalışma Kilidi (`QLocalServer`)**: Uygulama açıkken tekrar çift tıklandığında ikinci bir süreç açılmaz, mevcut pencere öne getirilir.
-- 🌍 **Çevrimdışı Güneş Modu**: Dış API veya internet gerektirmeden, astronomik Güneş Yüksekliği (α) formülü ile gün boyunca parlaklığı yumuşak sinüs eğrisi üzerinden otomatik ayarlar.
-- 🖥️ **Çoklu Monitör & Hot-Plug Desteği**: Sistemdeki tüm bağlı ekranları otomatik algılar. Monitör takıp çıkarıldığında anında arayüzü günceller ve eşzamanlı kontrol sağlar. Monitör ismi okunamayan ekranlar için akıllı isim düşüşü (fallback) uygular.
-- 🌙 **Gece Işığı (Night Light) Filtresi**: Windows API'lerine dokunmadan saf PyQt5 (`Qt.WindowTransparentForInput`) üzerinden ekranlara tıklama geçiren, göz yormayan, yoğunluğu ayarlanabilir turuncu şeffaf bir katman çizer. Kompakt bir toggle switch ile açılıp kapanır; monitör takılıp çıkarıldığında overlay'ler otomatik yeniden kurulur. Diğer modlarla (özellikle Gece Modu) senkronize otomatik devreye girer.
-- 🎨 **Hazır Profil Butonları**: Güneş Modu, Gece Modu (%0) ve Gündüz Modu (%100) arasında tek tıkla geçiş. Aktif mod mavi vurgu ile belirtilir; bir slider elle değiştirildiğinde arayüz bunu "Özel Mod Aktif" etiketiyle ayrıca gösterir.
-- 📌 **Dinamik Tepsi Tooltip**: Fare simge üzerindeyken anlık aktif modu ve tüm monitörlerin % parlaklıklarını canlı gösterir.
-- 🔄 **Windows Başlangıç Kaydı**: Sistem başlangıcına ekleme/çıkarma opsiyonu (Windows Registry `HKCU` entegrasyonu).
+- 🌅 **Güneş Modu**: İnternet gerektirmez. Konumundaki güneş yüksekliğinden parlaklığı yumuşak bir sinüs eğrisiyle hesaplar ve dakikada bir günceller.
+- 📈 **Güneş paneli**: Şu anki güneş yüksekliğini, otomatik hedef parlaklığı, gün doğumu/batımını ve bugünün parlaklık eğrisini (şimdiki anı gösteren işaretle) gösterir.
+- 🌙 **Gece taban parlaklığı**: Otomatik ve Gece modunda ekran artık tamamen kararmaz. Alt sınır varsayılan %10, tepsi menüsünden (%0 / 5 / 10 / 15 / 20 / 30) değiştirilir.
+- 💾 **Ayarlar hatırlanır**: Son mod, Gece Işığı durumu ve şiddeti, özel moddaki monitör değerleri yeniden başlatınca korunur.
+- 🖥️ **Çoklu monitör ve sıcak takma**: Monitör takılıp çıkarıldığında arayüz yeniden kurulur, pencere içeriğe göre boyutlanır (1, 2, 3+ monitör).
+- ⚡ **Arayüzü bekletmeyen donanım erişimi**: Monitör tarama (DDC/CI okuma) ve parlaklık yazma ayrı iş parçacıklarında yapılır. Popup açılırken arayüz donmaz, aynı monitör için art arda gelen yazmalar tek değere indirilir.
+- 🔥 **Gece Işığı filtresi**: Windows API'lerine dokunmadan, tıklamaları geçiren, şiddeti ayarlanabilir turuncu bir katman çizer.
+- 🎨 **Hazır profiller**: Güneş, Gece, Gündüz tek tıkla. Slider elle (fare, klavye ya da tekerlek) değiştirilince "Özel Mod" olur.
+- 🔒 **Tekil çalışma**: Uygulama açıkken tekrar başlatılırsa mevcut pencere öne gelir.
+- 📌 **Tepsi**: Fareyle üzerine gelince mod ve monitör parlaklıkları görünür. Ortadaki tuş Güneş Modu'nu açar. Simge yalnızca parlaklık ya da mod değişince yeniden çizilir (sürekli animasyon yok).
+- 🔄 **Windows ile başlat**: Tepsi menüsünden `HKCU\...\Run` kaydı açılıp kapatılır.
 
 ---
 
-## 🎨 Animasyonlu İkon Detayları
+## ⚙️ Ayar ve günlük dosyaları
 
-| Durum | İkon Görünümü |
+Hepsi `%APPDATA%\ParlaklikKontrol\` altında:
+
+| Dosya | Ne işe yarar |
 | :--- | :--- |
-| **Güneş Modu** | Işınlar yavaşça döner (dakikada ~3 tur), parlaklığa göre altın rengi |
-| **Gündüz Modu (%100)** | Tam parlak altın sarı, büyük dolgulu daire, uzun ışınlar |
-| **Parlaklık %50** | Orta ton, orta boyut |
-| **Gece Modu (%0)** | Soluk mavi-gri, küçük daire, kısa ışınlar, dönme durur |
+| `settings.json` | Kalıcı ayarlar. Elle de düzenlenebilir (uygulama kapalıyken). |
+| `app.log` | Hata ve olay günlüğü (256 KB'ta döner, `pythonw` altında konsol olmadığı için burada tutulur). |
+
+`settings.json` anahtarları:
+
+| Anahtar | Varsayılan | Açıklama |
+| :--- | :--- | :--- |
+| `lat`, `lon` | 39.6484, 27.8826 | Güneş hesabı için konum |
+| `tz_offset` | `null` | `null` ise sistem saat dilimi kullanılır |
+| `min_brightness` | 10 | Gece/otomatik modda en düşük parlaklık (%) |
+| `mode` | `auto` | `auto`, `gece`, `gunduz`, `custom` |
+| `night_light`, `night_light_strength` | `false`, 15 | Gece Işığı durumu ve şiddeti |
+| `custom_values` | `{}` | Özel modda monitör başına parlaklık |
 
 ---
 
-## 🛠️ Gereksinimler ve Kurulum
+## 🛠️ Kurulum
 
 ```bash
-pip install PyQt5 screen-brightness-control
+pip install -r requirements.txt
 ```
-
----
 
 ## 🚀 Çalıştırma
 
 ```bash
 pythonw brightness.pyw
 ```
+
+> **Not:** "Windows ile Başlat" kaydı, betiğin ve Python'un tam yolunu saklar. Proje klasörünü taşırsan ya da Python'u başka bir dizine kurarsan menüden seçeneği kapatıp yeniden aç.
 
 ---
 

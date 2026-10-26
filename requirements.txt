@@ -1,0 +1,2 @@
+PyQt5>=5.15
+screen-brightness-control>=0.27
